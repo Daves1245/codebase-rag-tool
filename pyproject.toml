@@ -1,0 +1,40 @@
+[project]
+name="codebase-rag"
+version="1.0.0"
+description="RAG for answering questions over a github repo"
+readme="README.md"
+requires-python=">=3.14"
+authors=[
+	{name="David Santamaria", email="davidsantamaria1245@gmail.com"}
+]
+license={text="MIT"}
+
+[project.scripts]
+cbrt="src.cli.main:cli"
+
+# not consistent with 80 width standard, but usually
+# not an issue. not planning to run on old hardware
+[tool.black]
+line-length = 120
+target-version = ['py314']
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+
+[tool.isort]
+profile = "black"
+line_length = 120

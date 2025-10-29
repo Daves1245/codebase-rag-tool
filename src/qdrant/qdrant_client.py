@@ -1,0 +1,2 @@
+class QdrantClient:
+    pass
