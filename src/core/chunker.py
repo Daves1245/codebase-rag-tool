@@ -82,6 +82,23 @@ class Chunker:
 
     def _chunk_by_line(self, path: Path, lines: str, language: str, ast_metadata: Optional[dict] = None) -> List[Chunk]:
         chunks: List[Chunk] = []
-        return chunks
+        size = len(lines)
+        start = 0
+        while start < size:
+            end = min(start + self.chunk_size, size)
+            chunk_lines = lines[start:end]
+            content = ''.join(chunk_lines)
 
-    pass
+            if content.strip():
+                chunks.append(Chunk(
+                    content = content,
+                    path = str(path),
+                    language = language,
+                    start_line = start + 1,
+                    end_line = end,
+                    chunk_type = 'block',
+                    ast_metadata = None
+                ))
+            # move by overlap
+            start = end - self.overlap if end < size else end
+        return chunks
