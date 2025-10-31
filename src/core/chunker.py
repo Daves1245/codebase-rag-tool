@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
@@ -6,9 +7,10 @@ from src.core.config import settings
 
 from loguru import logger
 
+@dataclass
 class Chunk:
     content: str
-    file_path: str
+    path: str
     language: str
     start_line: int
     end_line: int
@@ -38,8 +40,44 @@ class Chunker:
 
         return chunks
 
-    def _chunk_by_symbols(self, path: Path, lines: str, language: str, ast_metadata: Optional[dict] = None) -> List[Chunk]:
+    def _detect_language(self, path: Path) -> Optional[str]:
+        language_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'tsx',
+            '.jsx': 'javascript',
+            '.java': 'java',
+            '.cpp': 'cpp',
+            '.cc': 'cpp',
+            '.c': 'c',
+            '.h': 'cpp',
+            '.hpp': 'cpp',
+            '.go': 'go',
+            '.rs': 'rust',
+        }
+        return language_map.get(path.suffix.lower())
+
+    def _chunk_by_symbols(self, path: Path, lines: str, language: str, ast_metadata: ASTMetadata) -> List[Chunk]:
         chunks: List[Chunk] = []
+        for symbol in ast_metadata.symbols:
+            chunk_lines = lines[symbol.start_line - 1 :symbol.end_line]
+            content = ''.join(chunk_lines)
+
+            if content.strip():
+                chunks.append(Chunk(
+                    content = content,
+                    path = str(path),
+                    language = language,
+                    start_line = symbol.start_line,
+                    end_line = symbol.end_line,
+                    chunk_type = symbol.type,
+                    symbol_name = symbol.name,
+                    docstring = symbol.docstring,
+                    ast_metadata = {'symbol_type': symbol.type}
+                ))
+        if not chunks:
+            chunks = self._chunk_by_line(path, lines, language)
         return chunks
 
     def _chunk_by_line(self, path: Path, lines: str, language: str, ast_metadata: Optional[dict] = None) -> List[Chunk]:
