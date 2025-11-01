@@ -24,7 +24,7 @@ class QueryResult:
 
 class CodebaseRAG:
     def __init__(self) -> None:
-        self.query_refiner = QueryRefiner()
+        self.query_rewriter = QueryRewriter()
         self.qdrant = QdrantClient()
         self.hybrid_search = HybridSearch(self.qdrant)
         self.response_generator = ResponseGenerator()
