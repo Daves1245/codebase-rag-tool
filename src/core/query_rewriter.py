@@ -68,3 +68,11 @@ class QueryRewriter:
             )
 
         except Exception as e:
+            logger.error(f"unexpected error in query rewriting: {e}")
+            return RewrittenQuery(
+                original_query=query,
+                rewritten_query=query,
+                search_strategy='hybrid',
+                file_patterns=[],
+                reasoning=f"Unexpected error: {e}"
+            )

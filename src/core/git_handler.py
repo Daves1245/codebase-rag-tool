@@ -41,8 +41,8 @@ class GitHandler:
             if repo_size_mb > settings.MAX_REPO_SIZE_MB:
                 shutil.rmtree(repo_path)
                 raise ValueError(
-                    f"github reop too large: {repo_size_mb:1f}MB > "
-                    f"{settings.MAX_REPO_SIZE_MB}MB limit"}
+                    f"github repo too large: {repo_size_mb:.1f}MB > "
+                    f"{settings.MAX_REPO_SIZE_MB}MB limit"
                 )
             logger.info(f"Successfully cloned repo {repo_id} at {repo_path}")
             return repo_id, repo_path
