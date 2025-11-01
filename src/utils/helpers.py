@@ -1,3 +1,4 @@
+from typing import Optional
 import hashlib
 import re
 from urllib.parse import urlparse
@@ -12,7 +13,7 @@ def generate_repo_id(github_url: str) -> str:
     owner, repo = parsed
     return f"{owner}_{repo}"
 
-def parse_github_url(github_url: str) -> tuple[str, str] | None:
+def parse_github_url(github_url: str) -> Optional[tuple[str, str]]:
     """parse github url to extract owner and repo name"""
     url = github_url.strip().rstrip('/')
 
