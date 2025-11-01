@@ -54,22 +54,23 @@ class CodebaseRAG:
                 try:
                     content = path.read_text(encoding = 'utf-8', errors = 'ignore')
                     ast_metadata = self.ast_parser.parse_file(path, content)
-                    chunks = self.chunker.chunk_file(
+                    file_chunks = self.chunker.chunk_file(
                         path.relative_to(repo_path),
                         content,
                         ast_metadata
                     )
-                    chunks.extend(chunks)
+                    chunks.extend(file_chunks)
                 except Exception as e:
                     logger.error(f"Failed to index {path}")
-        logger.info(f"Created {len(chunks)} code chunks")
+            
+            logger.info(f"Created {len(chunks)} code chunks")
 
-        chunk_texts = [chunk.content for chunk in chunks]
-        embeddings = await self.embeddings.generate_embeddings(chunk_texts)
+            chunk_texts = [chunk.content for chunk in chunks]
+            embeddings = await self.embeddings.generate_embeddings(chunk_texts)
 
-        await self.qdrant.upsert_chunks(repo_id, chunks, embeddings)
+            await self.qdrant.upsert_chunks(repo_id, chunks, embeddings)
 
-        logger.info(f"Indexed repo {repo_id}")
+            logger.info(f"Indexed repo {repo_id}")
         except Exception as e:
             pass
 
@@ -95,7 +96,7 @@ class CodebaseRAG:
             )
             search_time_ms = (time.time() - start_time) * 1000
 
-            logger.info(f"Finished query in {search_time_ms.0f}ms, found {len(results) results}")
+            logger.info(f"Finished query in {search_time_ms:.0f}ms, found {len(results)} results")
 
             generated_response = None
             if generate_response and results:

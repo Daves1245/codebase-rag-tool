@@ -14,7 +14,7 @@ class EmbeddingGenerator:
         self.batch_size = settings.BATCH_SIZE
         self.model: Optional[SentenceTransformer] = None
 
-        if self.provider = 'sentence-transformers':
+        if self.provider == 'sentence-transformers':
             self._init_sentence_transformers()
 
     def _init_sentence_transformers(self) -> None:
