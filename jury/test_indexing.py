@@ -16,6 +16,10 @@ class TestIndexing:
         """Test indexing of the GitHub repository https://github.com/Daves1245/horizon"""
         init_logger()
 
+        # override config for testing
+        from src.core.config import settings
+        settings.EMBEDDING_PROVIDER = "mock"
+
         rag = CodebaseRAG()
         await rag.init()
 
@@ -29,6 +33,10 @@ class TestIndexing:
     @pytest.mark.asyncio
     async def test_rag_initialization(self):
         """Test that RAG pipeline initializes correctly"""
+        # override config for testing
+        from src.core.config import settings
+        settings.EMBEDDING_PROVIDER = "mock"
+
         rag = CodebaseRAG()
         await rag.init()
 
@@ -40,18 +48,29 @@ class TestIndexing:
 # manual test development
 async def manual_test_indexing():
     init_logger()
-    print("Testing RAG indexing with GitHub repository...")
+    print("testing rag indexing with github repository...")
 
-    rag = CodebaseRAG()
-    await rag.init()
-
-    github_url = "https://github.com/Daves1245/horizon"
     try:
+        from src.core.config import settings
+        settings.EMBEDDING_PROVIDER = "mock"
+
+        rag = CodebaseRAG()
+        print("rag pipeline created")
+
+        await rag.init()
+        print("rag pipeline initialized")
+
+        github_url = "https://github.com/Daves1245/horizon"
+        print(f"starting indexing of {github_url}...")
+
         result = await rag.index_repo(github_url, force_reindex=True)
-        print(f"Indexing completed successfully: {result}")
+        print(f"indexing completed successfully: {result}")
         return True
     except Exception as e:
-        print(f"Indexing failed: {e}")
+        import traceback
+        print(f"indexing failed: {e}")
+        print("full traceback:")
+        traceback.print_exc()
         return False
 
 if __name__ == "__main__":

@@ -19,9 +19,10 @@ class EmbeddingGenerator:
     def _init_sentence_transformers(self) -> None:
         try:
             # lazy import to avoid segfaults during testing
+            # TODO there should be a better fix for this somewhere, somehow
             import torch
             from sentence_transformers import SentenceTransformer
-            
+
             logger.info(f"loading embedding model...")
             self.model = SentenceTransformer(self.model_name)
 
@@ -64,7 +65,7 @@ class EmbeddingGenerator:
                 convert_to_numpy=True
             )
             return embeddings.tolist()
-        
+
         return await event_loop.run_in_executor(None, _encode)
 
     async def _generate_mock_embeddings(self, texts: List[str]) -> List[List[float]]:
