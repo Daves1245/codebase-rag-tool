@@ -1,5 +1,4 @@
 import asyncio
-import click
 
 from src.core.config import settings
 from src.core.rag_pipeline import CodebaseRAG
@@ -26,7 +25,7 @@ def query(repo_id: str, query: str, top_k: int = 5, mode: str = "hybrid") -> Non
 
     if result.generated_response:
         print("Refined query: ", result.generated_response)
-    for i, res in enumerate(result.results, 1):
+    for res in enumerate(result.results, 1):
         print("Score: ", res.score)
         print("```")
         print(res.content)

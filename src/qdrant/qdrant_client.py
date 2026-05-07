@@ -32,14 +32,16 @@ class QdrantClient:
             logger.error(f"failed to create collection: {e}")
             raise
 
-    async def upsert_chunks(self, repo_id: str, chunks: List[Any], embeddings: List[List[float]]) -> None:
+    async def upsert_chunks(self, repo_id: str,
+                            chunks: List[Any], embeddings: List[List[float]]) -> None:
         """insert or update chunk vectors"""
         if not chunks or not embeddings:
             logger.warning("no chunks or embeddings to upsert")
             return
 
         if len(chunks) != len(embeddings):
-            raise ValueError(f"chunks ({len(chunks)}) and embeddings ({len(embeddings)}) length mismatch")
+            raise ValueError(
+                f"chunks ({len(chunks)}) and embeddings ({len(embeddings)}) length mismatch")
 
         points = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
@@ -61,7 +63,8 @@ class QdrantClient:
         )
         logger.info(f"upserted {len(points)} chunks for repo {repo_id}")
 
-    async def search(self, query_embedding: List[float], top_k: int = 5, repo_filter: str = None) -> List[Dict[str, Any]]:
+    async def search(self, query_embedding: List[float],
+                     top_k: int = 5, repo_filter: str = None) -> List[Dict[str, Any]]:
         """search for similar vectors"""
         try:
             search_filter = None

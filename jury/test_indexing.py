@@ -1,14 +1,18 @@
-import asyncio
-import pytest
 import sys
+import asyncio
+import traceback
 from pathlib import Path
+
+import pytest
+
+from src.core.rag_pipeline import CodebaseRAG
+from src.utils.logger import init_logger
+from src.core.config import settings
+
 
 # neded for pytest resolution
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from src.core.rag_pipeline import CodebaseRAG
-from src.utils.logger import init_logger
 
 class TestIndexing:
     @pytest.mark.asyncio
@@ -17,7 +21,6 @@ class TestIndexing:
         init_logger()
 
         # override config for testing
-        from src.core.config import settings
         settings.EMBEDDING_PROVIDER = "mock"
 
         rag = CodebaseRAG()
@@ -34,7 +37,6 @@ class TestIndexing:
     async def test_rag_initialization(self):
         """Test that RAG pipeline initializes correctly"""
         # override config for testing
-        from src.core.config import settings
         settings.EMBEDDING_PROVIDER = "mock"
 
         rag = CodebaseRAG()
@@ -51,7 +53,6 @@ async def manual_test_indexing():
     print("testing rag indexing with github repository...")
 
     try:
-        from src.core.config import settings
         settings.EMBEDDING_PROVIDER = "mock"
 
         rag = CodebaseRAG()
@@ -67,7 +68,6 @@ async def manual_test_indexing():
         print(f"indexing completed successfully: {result}")
         return True
     except Exception as e:
-        import traceback
         print(f"indexing failed: {e}")
         print("full traceback:")
         traceback.print_exc()

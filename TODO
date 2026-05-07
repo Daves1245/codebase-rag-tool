@@ -1,0 +1,4 @@
+
+core/ast_parser:
+- 'dependencies' should track function calls / jumps as well
+- differentiate between functions and methods in extracted symbols (currently both tagged as "function")

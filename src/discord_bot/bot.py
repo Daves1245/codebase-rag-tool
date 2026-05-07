@@ -2,7 +2,6 @@ import os
 import discord
 from dotenv import load_dotenv
 
-from src.core.config import settings
 from src.core.rag_pipeline import CodebaseRAG
 from src.utils.helpers import generate_repo_id
 from src.utils.logger import init_logger
@@ -20,7 +19,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 rag = CodebaseRAG()
 
-repo_id: int
+repo_id: str
 
 def _get_option(interaction: discord.Interaction, name: str):
     options = {opt["name"]: opt["value"] for opt in interaction.data.get("options", [])}

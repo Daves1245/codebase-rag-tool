@@ -1,0 +1,15 @@
+[discord]
+application_id=1501674714232393768
+discord_bot_token='DISCORD_BOT_TOKEN_PLACEHOLDER'
+
+[logistics]
+llm_provider='anthropic'
+llm_model='claude-3-5-sonnet-20240620'
+
+[parameters]
+batch_size=32
+embedding_dimensions=3072
+
+[git]
+cache_dir='./data'
+max_repo_size_mb=256

@@ -11,7 +11,7 @@ bot_token = os.getenv('DISCORD_BOT_TOKEN')
 if application_id is None or bot_token is None:
     raise KeyError("Could not read application id or bot token env variables")
 
-url = f"https://discord.com/api/v10/applications/{application_id}/commands"
+URL = f"https://discord.com/api/v10/applications/{application_id}/commands"
 
 chat_commands = [
     {
@@ -55,7 +55,7 @@ headers = {
 
 for cmd in chat_commands:
     print(cmd['name'], ":", end='')
-    r = requests.post(url, headers=headers, json=cmd)
+    r = requests.post(URL, headers=headers, json=cmd)
     if r.status_code >= 300:
         print("Recieved non-ok response: ", json.dumps(r.json(), indent=4))
     else:

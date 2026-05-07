@@ -3,7 +3,7 @@ name="codebase-rag"
 version="1.0.0"
 description="RAG for answering questions over a github repo"
 readme="README.md"
-requires-python=">=3.14"
+requires-python=">=3.12"
 authors=[
 	{name="David Santamaria", email="davidsantamaria1245@gmail.com"}
 ]
@@ -16,17 +16,23 @@ cbrt="src.cli.main:cli"
 # not an issue. not planning to run on old hardware
 [tool.black]
 line-length = 120
-target-version = ['py314']
+target-version = ['py312']
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py312"
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+
+# avoid infinite recursion because pylint won't
+# automatically ignore .venv and just walks every
+# .py file it finds within scope
+[tool.pylint.MASTER]
+ignore = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
