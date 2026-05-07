@@ -1,7 +1,8 @@
+# env
+.env
+
 # vim
-*.swp
-*.swo
-*.swn
+*.sw*
 
 # python
 __pycache__/
