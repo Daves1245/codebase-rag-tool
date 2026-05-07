@@ -51,6 +51,7 @@ class CodebaseRAG:
             chunks: List[Chunk] = []
 
             for i, path in enumerate(files):
+                logger.info(f"Chunking {path}")
                 try:
                     content = path.read_text(encoding = 'utf-8', errors = 'ignore')
                     ast_metadata = self.ast_parser.parse_file(path, content)
@@ -62,7 +63,7 @@ class CodebaseRAG:
                     chunks.extend(file_chunks)
                 except Exception as e:
                     logger.error(f"Failed to index {path}")
-            
+
             logger.info(f"Created {len(chunks)} code chunks")
 
             chunk_texts = [chunk.content for chunk in chunks]

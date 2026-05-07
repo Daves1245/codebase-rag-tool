@@ -1,4 +1,4 @@
-import git # hilarious
+import git
 
 import os
 import sys

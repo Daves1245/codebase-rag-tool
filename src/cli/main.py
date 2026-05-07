@@ -6,8 +6,6 @@ from src.core.rag_pipeline import CodebaseRAG
 from src.utils.logger import init_logger
 
 def cli():
-    welcome_message = "codbease rag tool"
-    print(welcome_message)
     init_logger()
 
 def index(github_url: str) -> None:

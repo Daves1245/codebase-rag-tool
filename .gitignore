@@ -8,5 +8,7 @@
 __pycache__/
 venv/
 
+.tags
+
 # data (data? [data!])
 data/
