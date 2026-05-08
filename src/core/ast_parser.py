@@ -1,12 +1,20 @@
-from tree_sitter import Language, Parser, QueryCursor
-from tree_sitter_language_pack import get_language
-
-from typing import List, Optional, Any, Dict
+"""
+ast_parser.py: interface for working with tree sitter ASTs
+"""
+from typing import List, Optional, Any
 from pathlib import Path
 
 from loguru import logger
 
+from tree_sitter import Parser, QueryCursor, Tree
+from tree_sitter_language_pack import get_language
+
+from src.utils.languages import require_language
+
 class Symbol:
+    """
+    Symbol: analog for code symbols
+    """
     name: str
     type: str # function, class, method, etc.
     start_line: int
@@ -15,14 +23,20 @@ class Symbol:
     docstring: Optional[str] = None
 
 class ASTMetadata:
+    """
+    ASTMetadata: Metadata we can quickly query
+    """
     language: str
     symbols: List[Symbol]
     dependencies: List[str] # import?
     lines: int
     raw_ast: Optional[Any] = None
+    tree: Tree
 
 class ASTParser:
-
+    """
+    ASTParser: Language-agnostic parser
+    """
     LANG_PYTHON = get_language('python')
     LANG_TYPESCRIPT = get_language('typescript')
     LANG_JAVASCRIPT = get_language('javascript')
@@ -48,21 +62,32 @@ class ASTParser:
         self.parser = Parser()
 
     def parse_file(self, path: Path, content: str) -> Optional[ASTMetadata]:
-        language = self._detect_language(path)
+        """
+        Generate ASTMetadata for a given file
+
+        Args:
+            path: File to parse
+        """
+        language = require_language(path)
         if not language or language not in self.language_map.keys():
             logger.debug(f"Could not find a suitable parser for file: {path}")
             return None
+
+        ret = ASTMetadata()
         try:
             self.parser = Parser()
             self.parser.language = get_language(language)
-            tree = self.parser.parse(content.encode())
-            symbols = self._extract_symbols(tree.root_node, language, content)
-            dependencies = self._extract_dependencies(tree.root_node, language, content)
+            ret.tree = self.parser.parse(content.encode())
+            ret.symbols = self._extract_symbols(ret.tree.root_node, language, content)
+            ret.dependencies = self._extract_dependencies(ret.tree.root_node, language)
+            # TODO check for a standard way to do this
 
-            # treesitter gives you three options for walking through an AST: DFS, Tree Cursor (large files),
+            # treesitter gives you three options for walking through an AST:
+            # DFS, Tree Cursor (large files),
             # and querying through S-expressions ()
         except Exception as e:
-            pass
+            raise e
+        return ret
 
     def _extract_symbols(self, node: Any, language: str, content: str) -> List[Symbol]:
         symbols: List[Symbol] = []
@@ -86,7 +111,6 @@ class ASTParser:
             (function_declaration name: (identifier) @function.name) @function
             (method_definition name: (property_identifier) @function.name) @function
             (variable_declarator
-                name: (identifier) @function.name
                 value: [(arrow_function) (function_expression)]) @function
             """,
 
@@ -148,11 +172,14 @@ class ASTParser:
 
     # use tree sitter S-expressions to find all imports
     # TODO determine outbound function calls / jumps
-    def _extract_dependencies(self, node: Any, language: str, content: str) -> List[str]:
+    def _extract_dependencies(self, node: Any, language: str) -> List[str]:
         dependencies: List[str] = []
 
-        # query syntax: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html
-        # grammar object name lookup / reference: https://tree-sitter.github.io/tree-sitter/7-playground.html?highlight=playground#
+        # query syntax:
+        # https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html
+        # grammar object name lookup / reference:
+        # https://tree-sitter.github.io/tree-sitter/7-playground.html?highlight=playground#
+
         # name every capture 'import' for general language support
         query_map = {
             "python": """
@@ -193,21 +220,3 @@ class ASTParser:
 
         return dependencies
 
-    # use file extension to find language
-    def _detect_language(self, path: Path) -> Optional[str]:
-        language_map = {
-            '.py': 'python',
-            '.js': 'javascript',
-            '.ts': 'typescript',
-            '.tsx': 'tsx',
-            '.jsx': 'javascript',
-            '.java': 'java',
-            '.cpp': 'cpp',
-            '.cc': 'cpp',
-            '.c': 'c',
-            '.h': 'cpp',
-            '.hpp': 'cpp',
-            '.go': 'go',
-            '.rs': 'rust',
-        }
-        return language_map.get(path.suffix.lower())

@@ -1,15 +1,14 @@
-import git
-
-import os
-import sys
 from pathlib import Path
 from typing import Optional
 import shutil
 
+import git
 from loguru import logger
 
 from src.core.config import settings
+from src.utils.fs import directory_size
 from src.utils.helpers import generate_repo_id, parse_github_url
+
 
 class GitHandler:
     def __init__(self) -> None:
@@ -35,9 +34,10 @@ class GitHandler:
             git.Repo.clone(
                 github_url,
                 depth = 1,
-                single_branch = True
+                single_branch = True,
+                path= repo_path,
             )
-            repo_size_mb = self._get_directory_size(repo_path) / 1024 * 1024
+            repo_size_mb = directory_size(repo_path) / (1024 * 1024)
             if repo_size_mb > settings.MAX_REPO_SIZE_MB:
                 shutil.rmtree(repo_path)
                 raise ValueError(
@@ -62,12 +62,3 @@ class GitHandler:
     def get_repo_path(self, repo_id: str) -> Optional[Path]:
         repo_path = self.cache_dir / repo_id
         return repo_path if repo_path.exists() else None
-
-    def _get_directory_size(self, path: Path) -> int:
-        total = 0
-        for entry in os.scandir(path):
-            if entry.is_file():
-                total += entry.stat().st_size
-            elif entry.is_dir():
-                total += GitHandler._get_directory_size(Path(entry.path))
-        return total

@@ -1,58 +1,60 @@
 """
 settings.py - interface for configurable values through toml files
 """
-from typing import Dict, Any
+from typing import Literal
 import tomllib
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
+
 
 class Config(BaseModel):
     """
-    Load configuration variables from a settings.toml file
+    Load configuration variables from a settings.toml file.
+    Construct via `Config.load(path)` so values are validated on construction.
     """
-    # llm logistics
-    llm_provider: str
-    llm_model: str
+    model_config = ConfigDict(frozen=True, extra='forbid')
 
-    # parameteres
-    batch_size: int
-    embedding_dimensions: int
+    # llm logistics
+    llm_provider: Literal['anthropic']
+    llm_model: str = Field(min_length=1)
+
+    # parameters
+    batch_size: int = Field(gt=0)
+    embedding_dimensions: int = Field(gt=0)
 
     # git-related
-    git_max_repo_size_mb: int
-    git_cache_dir: str
+    git_max_repo_size_mb: int = Field(gt=0)
+    git_cache_dir: str = Field(min_length=1)
 
+    # rewrite strategy
+    strategy: Literal['hyde', 'rewrite', 'composite', 'passthrough']
 
-    def load(self, path: str = "settings.toml"):
-        """
-        Args:
-            path: Path to settings.toml file. See settings.toml.example for expected values
-        """
-        _data: Dict[str, Any]
+    @classmethod
+    def load(cls, path: str = "settings.toml") -> "Config":
         with open(path, "rb") as f:
-            _data = tomllib.load(f)
+            data = tomllib.load(f)
 
-        self.llm_provider = _data['logistics']['llm_provider']
-        self.llm_model = _data['logistics']['llm_model']
+        return cls(
+            llm_provider=data['logistics']['llm_provider'],
+            llm_model=data['logistics']['llm_model'],
+            batch_size=data['parameters']['batch_size'],
+            embedding_dimensions=data['parameters']['embedding_dimensions'],
+            git_max_repo_size_mb=data['git']['max_repo_size_mb'],
+            git_cache_dir=data['git']['cache_dir'],
+            strategy=data['rewrite']['strategy'],
+        )
 
-        self.batch_size = _data['parameters']['batch_size']
-        self.embedding_dimensions = _data['parameters']['embedding_dimensions']
-
-        self.git_max_repo_size_mb = _data['git']['max_repo_size_mb']
-        self.git_cache_dir = _data['git']['cache_dir']
 
 class Credentials(BaseModel):
     """
-    Load secrets from a credentials.toml file
+    Load secrets from a credentials.toml file.
+    Construct via `Credentials.load(path)`.
     """
-    api_key: SecretStr
+    model_config = ConfigDict(frozen=True, extra='forbid')
 
-    def load(self, path: str = "credentials.toml"):
-        """
-        Args:
-            path: Path to a credentials.toml file. See credentials.toml.example for expected values
-        """
-        _data: Dict[str, Any]
+    api_key: SecretStr = Field(min_length=1)
 
+    @classmethod
+    def load(cls, path: str = "credentials.toml") -> "Credentials":
         with open(path, "rb") as f:
-            _data = tomllib.load(f)
-        self.api_key = _data['api_key']
+            data = tomllib.load(f)
+        return cls(api_key=data['api_key'])

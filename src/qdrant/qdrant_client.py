@@ -1,9 +1,9 @@
-import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from loguru import logger
 from qdrant_client import QdrantClient as QdrantClientLib
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import Distance, Filter, VectorParams
 from src.core.config import settings
+from src.qdrant.schemas import SearchFilter, SearchResult
 
 class QdrantClient:
     def __init__(self):
@@ -63,31 +63,37 @@ class QdrantClient:
         )
         logger.info(f"upserted {len(points)} chunks for repo {repo_id}")
 
-    async def search(self, query_embedding: List[float],
-                     top_k: int = 5, repo_filter: str = None) -> List[Dict[str, Any]]:
-        """search for similar vectors"""
+    async def search(
+        self,
+        query_embedding: List[float],
+        filters: Optional[SearchFilter] = None,
+        top_k: int = 5,
+    ) -> List[SearchResult]:
+        """search for similar vectors, optionally constrained by a SearchFilter"""
         try:
-            search_filter = None
-            if repo_filter:
-                search_filter = {
-                    "must": [{"key": "repo_id", "match": {"value": repo_filter}}]
-                }
-
-            results = self.client.search(
+            response = self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector=query_embedding,
+                query=query_embedding,
                 limit=top_k,
-                query_filter=search_filter
+                query_filter=self._to_qdrant_filter(filters),
             )
-
             return [
-                {
-                    "id": result.id,
-                    "score": result.score,
-                    "payload": result.payload
-                }
-                for result in results
+                SearchResult(id=str(p.id), score=p.score, payload=p.payload or {})
+                for p in response.points
             ]
         except Exception as e:
             logger.error(f"search failed: {e}")
             return []
+
+    @staticmethod
+    def _to_qdrant_filter(filters: Optional[SearchFilter]) -> Optional[Filter]:
+        if filters is None:
+            return None
+        kwargs: Dict[str, Any] = {}
+        if filters.must:
+            kwargs["must"] = filters.must
+        if filters.must_not:
+            kwargs["must_not"] = filters.must_not
+        if filters.should:
+            kwargs["should"] = filters.should
+        return Filter(**kwargs) if kwargs else None

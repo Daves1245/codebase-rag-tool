@@ -1,7 +1,6 @@
 from typing import Optional
 import hashlib
 import re
-from urllib.parse import urlparse
 
 def generate_repo_id(github_url: str) -> str:
     """generate a unique repo id from github url"""
