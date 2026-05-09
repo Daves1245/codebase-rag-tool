@@ -21,6 +21,10 @@ class Config(BaseModel):
     batch_size: int = Field(gt=0)
     embedding_dimensions: int = Field(gt=0)
 
+    # embeddings
+    embedding_provider: Literal['sentence-transformers', 'zembed', 'mock']
+    embedding_model: str = Field(min_length=1)
+
     # git-related
     git_max_repo_size_mb: int = Field(gt=0)
     git_cache_dir: str = Field(min_length=1)
@@ -30,6 +34,7 @@ class Config(BaseModel):
 
     @classmethod
     def load(cls, path: str = "settings.toml") -> "Config":
+        """Parse a settings.toml file and return a validated Config instance."""
         with open(path, "rb") as f:
             data = tomllib.load(f)
 
@@ -38,6 +43,8 @@ class Config(BaseModel):
             llm_model=data['logistics']['llm_model'],
             batch_size=data['parameters']['batch_size'],
             embedding_dimensions=data['parameters']['embedding_dimensions'],
+            embedding_provider=data['embeddings']['provider'],
+            embedding_model=data['embeddings']['model'],
             git_max_repo_size_mb=data['git']['max_repo_size_mb'],
             git_cache_dir=data['git']['cache_dir'],
             strategy=data['rewrite']['strategy'],
@@ -55,6 +62,7 @@ class Credentials(BaseModel):
 
     @classmethod
     def load(cls, path: str = "credentials.toml") -> "Credentials":
+        """Parse a credentials.toml file and return a validated Credentials instance."""
         with open(path, "rb") as f:
             data = tomllib.load(f)
         return cls(api_key=data['api_key'])

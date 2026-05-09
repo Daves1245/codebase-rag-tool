@@ -9,7 +9,6 @@ class SearchFilter:
     must_not: Optional[List[Dict[str, Any]]] = None
     should: Optional[List[Dict[str, Any]]] = None
 
-
 @dataclass
 class SearchResult:
     """result from vector search"""

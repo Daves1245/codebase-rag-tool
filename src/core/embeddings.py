@@ -1,96 +1,171 @@
+"""Embedding generation supporting sentence-transformers, zembed, and mock providers."""
 import asyncio
-from typing import List, Optional
+from typing import Dict, List, Literal, Optional
+
 from loguru import logger
 
-from src.core.config import settings
+from src.config.settings import Config
+
+_config = Config.load()
+
+# Maps known model names to their output dimensions.
+# Used to validate/override settings.EMBEDDING_DIMENSION at init time.
+MODEL_DIMENSIONS: Dict[str, int] = {
+    "zeroentropy/zembed-1-embedding": 2560,
+    "zeroentropy/zembed-1": 2560,
+    "sentence-transformers/all-MiniLM-L6-v2": 384,
+    "sentence-transformers/all-mpnet-base-v2": 768,
+    "sentence-transformers/all-distilroberta-v1": 768,
+}
+
+InputType = Literal["query", "document"]
+
 
 class EmbeddingGenerator:
+    """Generates embeddings using a configured provider and model."""
+
     def __init__(self) -> None:
-        self.provider = settings.EMBEDDING_PROVIDER
-        self.model_name = settings.EMBEDDING_MODEL
-        self.batch_size = settings.BATCH_SIZE
+        """Load the configured embedding model."""
+        self.provider = _config.embedding_provider
+        self.model_name = _config.embedding_model
+        self.batch_size = _config.batch_size
         self.model: Optional[object] = None
 
-        if self.provider == 'sentence-transformers':
+        known_dim = MODEL_DIMENSIONS.get(self.model_name)
+        if known_dim and known_dim != _config.embedding_dimensions:
+            logger.warning(
+                f"embedding_dimensions={_config.embedding_dimensions} does not match "
+                f"{self.model_name} native dimension {known_dim}. "
+                "Update EMBEDDING_DIMENSION in config to avoid Qdrant shape mismatches."
+            )
+
+        if self.provider == "sentence-transformers":
             self._init_sentence_transformers()
-        elif self.provider == 'mock':
+        elif self.provider == "zembed":
+            self._init_zembed()
+        elif self.provider == "mock":
             self._init_mock_embeddings()
 
     def _init_sentence_transformers(self) -> None:
+        """Load a HuggingFace model via sentence-transformers."""
         try:
-            # lazy import to avoid segfaults during testing
-            # TODO there should be a better fix for this somewhere, somehow
-            import torch
-            from sentence_transformers import SentenceTransformer
+            import torch  # pylint: disable=import-outside-toplevel
+            from sentence_transformers import SentenceTransformer  # pylint: disable=import-outside-toplevel
 
-            logger.info(f"loading embedding model...")
+            logger.info(f"Loading embedding model {self.model_name}...")
             self.model = SentenceTransformer(self.model_name)
 
-            # use gpu if available
             if torch.cuda.is_available():
                 self.model = self.model.cuda()
-                logger.info("using gpu for embeddings")
+                logger.info("Using GPU for embeddings")
             else:
-                logger.info("using cpu for embeddings")
+                logger.info("Using CPU for embeddings")
 
-        except Exception as e:
-            logger.error(f"failed to load embedding model: {e}")
-            logger.info("falling back to mock embeddings")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Failed to load embedding model: {e}")
+            logger.info("Falling back to mock embeddings")
+            self._init_mock_embeddings()
+
+    def _init_zembed(self) -> None:
+        """Load zembed-1 via sentence-transformers with required kwargs."""
+        try:
+            import torch  # pylint: disable=import-outside-toplevel
+            from sentence_transformers import SentenceTransformer  # pylint: disable=import-outside-toplevel
+
+            model_id = self.model_name or "zeroentropy/zembed-1-embedding"
+            logger.info(f"Loading zembed model {model_id}...")
+
+            self.model = SentenceTransformer(
+                model_id,
+                trust_remote_code=True,
+                model_kwargs={"torch_dtype": torch.bfloat16},
+            )
+
+            if torch.cuda.is_available():
+                self.model = self.model.cuda()
+                logger.info("Using GPU for zembed")
+            elif torch.backends.mps.is_available():
+                self.model = self.model.to("mps")
+                logger.info("Using MPS for zembed")
+            else:
+                logger.info("Using CPU for zembed")
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Failed to load zembed model: {e}")
+            logger.info("Falling back to mock embeddings")
             self._init_mock_embeddings()
 
     def _init_mock_embeddings(self) -> None:
-        logger.info("using mock embeddings for testing")
-        self.provider = 'mock'
+        """Switch to mock provider (used as fallback and in tests)."""
+        logger.info("Using mock embeddings")
+        self.provider = "mock"
 
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(
+        self,
+        texts: List[str],
+        input_type: InputType = "document",
+    ) -> List[List[float]]:
+        """Encode a batch of texts. Use input_type='query' for search queries."""
         if not texts:
             return []
 
-        if self.provider == 'sentence-transformers':
+        if self.provider == "sentence-transformers":
             return await self._generate_st_embeddings(texts)
-        elif self.provider == 'mock':
+        if self.provider == "zembed":
+            return await self._generate_zembed_embeddings(texts, input_type)
+        if self.provider == "mock":
             return await self._generate_mock_embeddings(texts)
-        elif self.provider == 'openai':
-            return await self._generate_openai_embeddings(texts)
-        else:
-            raise ValueError(f"unknown embedding provider: {self.provider}")
+        raise ValueError(f"Unknown embedding provider: {self.provider}")
+
+    async def generate_single_embedding(self, text: str) -> List[float]:
+        """Encode a single query string."""
+        embeddings = await self.generate_embeddings([text], input_type="query")
+        return embeddings[0] if embeddings else []
 
     async def _generate_st_embeddings(self, texts: List[str]) -> List[List[float]]:
-        event_loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()
 
         def _encode() -> List[List[float]]:
-            embeddings = self.model.encode(
+            return self.model.encode(
                 texts,
                 batch_size=self.batch_size,
-                convert_to_numpy=True
-            )
-            return embeddings.tolist()
+                convert_to_numpy=True,
+            ).tolist()
 
-        return await event_loop.run_in_executor(None, _encode)
+        return await loop.run_in_executor(None, _encode)
+
+    async def _generate_zembed_embeddings(
+        self,
+        texts: List[str],
+        input_type: InputType,
+    ) -> List[List[float]]:
+        """Encode using zembed's asymmetric query/document paths."""
+        loop = asyncio.get_event_loop()
+
+        def _encode() -> List[List[float]]:
+            if input_type == "query":
+                result = self.model.encode_query(
+                    texts[0] if len(texts) == 1 else texts,
+                )
+            else:
+                result = self.model.encode_document(texts)
+            import numpy as np  # pylint: disable=import-outside-toplevel
+            arr = np.array(result)
+            return arr.tolist() if arr.ndim == 2 else [arr.tolist()]
+
+        return await loop.run_in_executor(None, _encode)
 
     async def _generate_mock_embeddings(self, texts: List[str]) -> List[List[float]]:
-        # return mock embeddings for testing
-        import hashlib
+        """Deterministic mock embeddings for testing."""
+        import hashlib  # pylint: disable=import-outside-toplevel
         embeddings = []
         for text in texts:
-            # create deterministic mock embedding based on text hash
-            hash_obj = hashlib.md5(text.encode())
-            hash_bytes = hash_obj.digest()
-            # convert to 384-dimensional float vector
+            hash_bytes = hashlib.md5(text.encode()).digest()
             embedding = []
             for i in range(0, len(hash_bytes), 2):
                 if i + 1 < len(hash_bytes):
-                    val = (hash_bytes[i] + hash_bytes[i+1] * 256) / 65535.0
-                    embedding.append(val)
-            # pad to 384 dimensions
+                    embedding.append((hash_bytes[i] + hash_bytes[i + 1] * 256) / 65535.0)
             while len(embedding) < 384:
                 embedding.append(0.0)
             embeddings.append(embedding[:384])
         return embeddings
-
-    async def _generate_openai_embeddings(self, texts: List[str]) -> List[List[float]]:
-        raise NotImplementedError("openai embeddings not yet implemented")
-
-    async def generate_single_embedding(self, text: str) -> List[float]:
-        embeddings = await self.generate_embeddings([text])
-        return embeddings[0] if embeddings else []
