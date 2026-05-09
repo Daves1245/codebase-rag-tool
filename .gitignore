@@ -8,7 +8,7 @@
 __pycache__/
 venv/
 
-src/config/credentials.toml
+src/credentials/credentials.toml
 
 .tags
 

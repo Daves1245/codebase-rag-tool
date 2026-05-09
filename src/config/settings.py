@@ -61,7 +61,7 @@ class Credentials(BaseModel):
     api_key: SecretStr = Field(min_length=1)
 
     @classmethod
-    def load(cls, path: str = "credentials.toml") -> "Credentials":
+    def load(cls, path: str = "src/credentials/credentials.toml") -> "Credentials":
         """Parse a credentials.toml file and return a validated Credentials instance."""
         with open(path, "rb") as f:
             data = tomllib.load(f)
